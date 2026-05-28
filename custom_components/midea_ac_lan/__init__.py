@@ -45,6 +45,10 @@ from .const import (
     EXTRA_SWITCH,
 )
 from .midea_devices import MIDEA_DEVICES
+from .midea_power_patch import (
+    apply_q1d_power_customize,
+    install_q1d_realtime_power_patch,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,6 +73,11 @@ async def update_listener(hass: HomeAssistant, config_entry: ConfigEntry) -> Non
     refresh_interval = config_entry.options.get(CONF_REFRESH_INTERVAL, None)
     dev: MideaDevice = hass.data[DOMAIN][DEVICES].get(device_id)
     if dev:
+        customize = apply_q1d_power_customize(
+            customize,
+            dev.model,
+            dev.subtype,
+        )
         dev.set_customize(customize)
         if ip_address is not None:
             dev.set_ip_address(ip_address)
@@ -84,6 +93,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
     True if entry is configured.
 
     """
+    install_q1d_realtime_power_patch()
     hass.data.setdefault(DOMAIN, {})
     attributes = []
     for device_entities in MIDEA_DEVICES.values():
@@ -204,6 +214,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
     subtype = config_entry.data.get(CONF_SUBTYPE, 0)
     protocol: ProtocolVersion = ProtocolVersion(config_entry.data[CONF_PROTOCOL])
     customize: str = config_entry.options.get(CONF_CUSTOMIZE, "")
+    customize = apply_q1d_power_customize(customize, model, subtype)
     if protocol == ProtocolVersion.V3 and (key == "" or token == ""):
         _LOGGER.error("For V3 devices, the key and the token is required")
         return False
