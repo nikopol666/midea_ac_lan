@@ -50,8 +50,8 @@ def install_q1d_realtime_power_patch() -> None:
             return _ORIGINAL_PARSE_CONSUMPTION(1, databytes)
         return _ORIGINAL_PARSE_CONSUMPTION(analysis_method, databytes)
 
-    XC1MessageBody.parse_power = classmethod(parse_power)
-    XC1MessageBody.parse_consumption = classmethod(parse_consumption)
+    XC1MessageBody.parse_power = classmethod(parse_power)  # type: ignore[method-assign,assignment]
+    XC1MessageBody.parse_consumption = classmethod(parse_consumption)  # type: ignore[method-assign,assignment]
     _PATCHED = True
 
 
@@ -71,7 +71,7 @@ def apply_q1d_power_customize(customize: str, model: str, subtype: int) -> str:
         return customize
 
     try:
-        params: dict[str, Any] = json.loads(customize) if customize else {}
+        params: Any = json.loads(customize) if customize else {}
     except json.JSONDecodeError:
         _LOGGER.warning(
             "Cannot apply Q1D power parser because customize is not valid JSON",
