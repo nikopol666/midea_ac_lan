@@ -47,6 +47,8 @@ from .const import (
 from .midea_devices import MIDEA_DEVICES
 from .midea_power_patch import (
     apply_q1d_power_customize,
+    ensure_out_silent_attribute,
+    install_out_silent_patch,
     install_q1d_realtime_power_patch,
 )
 
@@ -73,6 +75,7 @@ async def update_listener(hass: HomeAssistant, config_entry: ConfigEntry) -> Non
     refresh_interval = config_entry.options.get(CONF_REFRESH_INTERVAL, None)
     dev: MideaDevice = hass.data[DOMAIN][DEVICES].get(device_id)
     if dev:
+        ensure_out_silent_attribute(dev)
         customize = apply_q1d_power_customize(
             customize,
             dev.model,
@@ -94,6 +97,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
 
     """
     install_q1d_realtime_power_patch()
+    install_out_silent_patch()
     hass.data.setdefault(DOMAIN, {})
     attributes = []
     for device_entities in MIDEA_DEVICES.values():
@@ -101,11 +105,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
             "dict",
             device_entities["entities"],
         ).items():
+            attribute_value = getattr(attribute_name, "value", attribute_name)
             if (
                 attribute.get("type") in EXTRA_SWITCH
-                and attribute_name.value not in attributes
+                and attribute_value not in attributes
             ):
-                attributes.append(attribute_name.value)
+                attributes.append(attribute_value)
 
     def service_set_attribute(service: Any) -> None:  # noqa: ANN401
         """Set service attribute func."""
@@ -251,6 +256,7 @@ async def async_setup_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> b
             customize=customize,
         )
     if device:
+        ensure_out_silent_attribute(device)
         if refresh_interval is not None:
             device.set_refresh_interval(refresh_interval)
         device.open()

@@ -7,7 +7,15 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-from midealocal.devices.ac.message import XC1MessageBody
+from midealocal.devices.ac.message import (
+    MessageNewProtocolQuery,
+    MessageNewProtocolSet,
+    XBXMessageBody,
+    XC1MessageBody,
+)
+
+EXPECTED_OUT_SILENT_QUERY_PARAM_COUNT = 9
+NEW_PROTOCOL_QUERY_BODY_TYPE = 0xB1
 
 
 def load_patch_module() -> Any:  # noqa: ANN401
@@ -82,3 +90,29 @@ class Q1DPowerPatchTest(unittest.TestCase):
             )
         with self.subTest("unrelated model"):
             assert patch.apply_q1d_power_customize("", "OTHER", patch.Q1D_SUBTYPE) == ""
+
+    def test_out_silent_new_protocol_backport(self) -> None:
+        """The local fork exposes out_silent without waiting for midea-local 6.7."""
+        patch = load_patch_module()
+        patch.install_out_silent_patch()
+
+        with self.subTest("query includes out_silent tag"):
+            body = MessageNewProtocolQuery(1).body
+            assert body[0] == NEW_PROTOCOL_QUERY_BODY_TYPE
+            assert body[1] == EXPECTED_OUT_SILENT_QUERY_PARAM_COUNT
+            assert body[-4:-2] == bytearray([0xCD, 0x00])
+
+        with self.subTest("set on sends firmware-specific value"):
+            message = MessageNewProtocolSet(1)
+            message.out_silent = True
+            assert message.body[1:6] == bytearray([0x01, 0xCD, 0x00, 0x01, 0x03])
+
+        with self.subTest("set off sends zero"):
+            message = MessageNewProtocolSet(1)
+            message.out_silent = False
+            assert message.body[1:6] == bytearray([0x01, 0xCD, 0x00, 0x01, 0x00])
+
+        with self.subTest("response parses state"):
+            body = bytearray([0xB0, 0x01, 0xCD, 0x00, 0x00, 0x01, 0x03])
+            parsed = XBXMessageBody(body, 0xB0)
+            assert parsed.out_silent is True
