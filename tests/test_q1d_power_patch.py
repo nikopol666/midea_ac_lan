@@ -81,6 +81,4 @@ class Q1DPowerPatchTest(unittest.TestCase):
                 == '{"power_analysis_method":101}'
             )
         with self.subTest("unrelated model"):
-            assert (
-                patch.apply_q1d_power_customize("", "OTHER", patch.Q1D_SUBTYPE) == ""
-            )
+            assert patch.apply_q1d_power_customize("", "OTHER", patch.Q1D_SUBTYPE) == ""
